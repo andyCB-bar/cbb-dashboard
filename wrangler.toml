@@ -17,7 +17,7 @@ rules = [
 # push, so later deploys reuse it (and never orphan the saved password/tokens).
 [[kv_namespaces]]
 binding = "TOKENS"
-# id = "<paste the TOKENS namespace id here after the first deploy>"
+id = "fc86a09ccfb64c3d99bc1644183bd8a1"   # pinned after first deploy (17 Oct 2026)
 
 # ----------------------------------------------------------------------------
 # Secrets - NEVER in any file. Set in Cloudflare (Worker > Settings >
