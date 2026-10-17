@@ -328,8 +328,9 @@ async function lastSync(env, source) {
    header, NOT in the body (Xero and most OpenID providers expect this); 'post'
    (or unset, for back-compat) -> client_id/client_secret in the form body. */
 function tokenRequestInit(cfg, params, env) {
-  const id = env[cfg.clientIdSecret] || '';
-  const secret = env[cfg.clientSecretSecret] || '';
+  /* trim: a pasted credential often carries a stray space or line break */
+  const id = String(env[cfg.clientIdSecret] || '').trim();
+  const secret = String(env[cfg.clientSecretSecret] || '').trim();
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
   const body = new URLSearchParams(params);
   if ((cfg.tokenAuth || 'post') === 'basic') {
@@ -594,7 +595,7 @@ async function authStart(env, source, url) {
   const redirectUri = url.origin + '/auth/' + source + '/callback';
   const p = new URLSearchParams({
     response_type: 'code',
-    client_id: env[cfg.clientIdSecret] || '',
+    client_id: String(env[cfg.clientIdSecret] || '').trim(),
     redirect_uri: redirectUri,
     scope: cfg.scopes || '',
     state
@@ -619,7 +620,21 @@ async function authCallback(env, source, url) {
     redirect_uri: redirectUri
   }, env));
   if (!res.ok) {
-    return new Response('The connection couldn’t be finished (the tool said no: ' + res.status + '). Your AI will check the app settings - the usual cause is a redirect address that doesn’t match exactly.', { status: 502 });
+    let code = '';
+    try { const j = await res.json(); code = String((j && (j.error || j.Title)) || ''); } catch (e) {}
+    let msg;
+    if (code === 'invalid_client' || code === 'unauthorized_client') {
+      msg = 'The tool didn’t accept the app’s secret code. Make a fresh secret in the tool’s app settings, replace it in Cloudflare, then click Connect again.';
+    } else if (code === 'invalid_grant') {
+      msg = 'That approval had already been used or expired. Go back to the dashboard and click Connect again (don’t refresh this page).';
+    } else {
+      msg = 'The connection couldn’t be finished. Your AI will check the app settings.';
+    }
+    return htmlResponse('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Connection not finished</title></head>'
+      + '<body style="font-family:system-ui,sans-serif;background:#FAF7F2;color:#2A2420;max-width:560px;margin:3rem auto;padding:0 16px;line-height:1.6">'
+      + '<h1 style="font-size:22px">Connection not finished</h1><p>' + msg + '</p>'
+      + '<p style="color:#8C8075;font-size:13px">Reference for your AI: ' + res.status + (code ? ' / ' + code.replace(/[^a-z_ ]/gi, '') : '') + '</p>'
+      + '<p><a href="/">Back to the dashboard</a></p></body></html>');
   }
   const t = await res.json();
   await saveTokens(env, source, {
