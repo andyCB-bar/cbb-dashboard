@@ -1,0 +1,35 @@
+# ============================================================================
+# Concrete Boots Bar dashboard - Worker config
+# Cloudflare reads this file and builds server-side from GitHub.
+# ============================================================================
+
+name = "cbb-dashboard"            # matches the GitHub repo name - sets the URL
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# The dashboard page is bundled into the Worker as text.
+rules = [
+  { type = "Text", globs = ["**/*.html"], fallthrough = true }
+]
+
+# Token + session store (KV). id omitted so the FIRST deploy auto-provisions the
+# namespace. After the first successful deploy, pin the provisioned id below and
+# push, so later deploys reuse it (and never orphan the saved password/tokens).
+[[kv_namespaces]]
+binding = "TOKENS"
+# id = "<paste the TOKENS namespace id here after the first deploy>"
+
+# ----------------------------------------------------------------------------
+# Secrets - NEVER in any file. Set in Cloudflare (Worker > Settings >
+# Variables and Secrets):
+#   ACCOUNTING_CLIENT_ID / ACCOUNTING_CLIENT_SECRET   (Xero)
+#   POS_* (Lightspeed - per the wired adapter)
+#   ROSTERING_API_TOKEN                               (Deputy, optional)
+#   INGEST_TOKEN                                      (only if an upload rung is used)
+#   DASHBOARD_PASSCODE / SESSION_SECRET               (optional overrides; normally unset)
+# ----------------------------------------------------------------------------
+
+# Cron rung (only if an adapter uses scheduledPull):
+# [triggers]
+# crons = ["0 3 * * *"]
+# EOF wrangler.toml
